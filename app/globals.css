@@ -1,0 +1,357 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 0, 0, 0;
+  --background-end-rgb: 0, 0, 0;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -45%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes expandContent {
+  from {
+    max-height: 0;
+    opacity: 0;
+  }
+  to {
+    max-height: 500px;
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+}
+
+@keyframes statusPulse {
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 0%;
+  }
+  25% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  75% {
+    background-position: 0% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+/* Animation classes */
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slideIn {
+  animation: slideIn 0.2s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+.animate-gradient {
+  animation: gradientMove 30s ease infinite;
+  background-size: 400% 400%;
+}
+
+.animate-expand-content {
+  animation: expandContent 0.5s ease-out forwards;
+}
+
+.animate-pulse-status {
+  animation: statusPulse 2s infinite ease-in-out;
+}
+
+/* Canvas styles */
+.canvas-gradient {
+  background: linear-gradient(
+    135deg,
+    rgba(50, 100, 220, 0.8) 0%,
+    rgba(130, 80, 220, 0.8) 33%,
+    rgba(180, 60, 160, 0.8) 67%,
+    rgba(220, 50, 100, 0.8) 100%
+  );
+  transition: background 4s ease-in-out;
+  background-attachment: fixed;
+}
+
+/* Insight bubble styles */
+.insight-bubble {
+  background-color: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.15);
+  border-radius: 1.5rem;
+}
+
+/* Keyword bubble styles */
+.keyword-bubble {
+  backdrop-filter: blur(8px);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.15);
+  border-radius: 28px;
+  min-width: 180px;
+  max-width: 300px; /* Ensure bubbles don't get too wide */
+  word-wrap: break-word; /* Ensure text wraps */
+  overflow-wrap: break-word; /* Modern browsers */
+  /* Remove transition from here to avoid conflicting animations */
+}
+
+.keyword-bubble-collapsed {
+  background-color: rgba(255, 255, 255, 0.15);
+  transition: background-color 0.3s ease-out;
+}
+
+.keyword-bubble-collapsed:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.keyword-bubble-highlighted {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.keyword-bubble-expanded {
+  background-color: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
+  max-width: min(400px, 85vw);
+  width: 100%;
+  /* Content expansion is handled separately */
+}
+
+/* Tag styles */
+.tag {
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+/* Notification styles */
+.notification-indicator {
+  transition: all 0.5s;
+  display: block; /* Ensure the indicator is visible */
+}
+
+.notification-indicator-active {
+  background-color: rgba(255, 255, 255, 0.9);
+  animation: pulse 3s infinite;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+}
+
+.notification-indicator-inactive {
+  background-color: transparent;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.notification-modal {
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+/* Recording controls styles */
+.recording-controls {
+  transition: all 0.3s ease-in-out;
+  position: relative;
+  z-index: 50; /* Ensure controls are above canvas elements */
+}
+
+/* Recording controls consistent height */
+.recording-controls-container {
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 50; /* Ensure container is above canvas elements */
+}
+
+@media (min-width: 640px) {
+  .recording-controls-container {
+    height: 44px; /* Consistent height for desktop */
+  }
+}
+
+.recording-status-indicator {
+  animation: statusPulse 2s infinite ease-in-out;
+}
+
+/* Recording status animations */
+@keyframes recordingPulse {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+}
+
+.recording-status-active {
+  background-color: rgba(74, 222, 128, 0.9);
+  animation: recordingPulse 2s infinite ease-in-out;
+}
+
+.recording-status-paused {
+  background-color: rgba(250, 204, 21, 0.9);
+}
+
+.desktop-recording-status {
+  width: 8px;
+  height: 8px;
+}
+
+.mobile-recording-status {
+  width: 4px;
+  height: 4px;
+}
+
+/* Waveform animations */
+@keyframes waveformPulse {
+  0% {
+    height: 3px;
+  }
+  50% {
+    height: 12px;
+  }
+  100% {
+    height: 3px;
+  }
+}
+
+.waveform-bar {
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 9999px;
+  transition: all 0.1s;
+}
+
+.desktop-waveform-bar {
+  width: 2px;
+  animation: waveformPulse 1s infinite ease-in-out;
+  animation-delay: calc(var(--index, 0) * 0.1s);
+}
+
+.mobile-waveform-bar {
+  width: 1px;
+  animation: waveformPulse 1s infinite ease-in-out;
+  animation-delay: calc(var(--index, 0) * 0.1s);
+}
+
+/* Notification indicator styles */
+.desktop-notification-indicator {
+  width: 20px;
+  height: 20px;
+}
+
+.mobile-notification-indicator {
+  width: 8px;
+  height: 8px;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 640px) {
+  .mobile-notification-indicator {
+    width: 12px;
+    height: 12px;
+  }
+
+  .desktop-notification-indicator {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* Add these styles to fix the missing background colors */
+
+/* Tab bar styles */
+.tab-bar {
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+/* Chat input container styles */
+.chat-input-container {
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+}
+
+/* Add these styles after the .chat-input-container styles */
+
+/* Chat bubble styles */
+.chat-bubble-user {
+  background-color: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(8px);
+  border-radius: 1.5rem;
+}
+
+/* Change the .chat-bubble-ai style to have a transparent background */
+.chat-bubble-ai {
+  background-color: transparent;
+  backdrop-filter: blur(8px);
+  border-radius: 1.5rem;
+}
