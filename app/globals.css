@@ -152,20 +152,51 @@ body {
 }
 
 /* Keyword bubble styles */
+/* Update the keyword grid styles to use a column-based layout */
+.keyword-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 16px;
+  width: 100%;
+  padding-top: 120px; /* Extra top padding to prevent overlay with header and filters */
+}
+
+.keyword-column {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 0 8px;
+}
+
+@media (min-width: 640px) {
+  .keyword-grid {
+    padding: 24px;
+    padding-top: 140px; /* Extra top padding for desktop */
+  }
+
+  .keyword-column {
+    gap: 24px;
+    padding: 0 12px;
+  }
+}
+
+/* Update the keyword bubble container styles */
+.keyword-bubble-container {
+  width: 100%;
+  min-height: 80px;
+}
+
 .keyword-bubble {
   backdrop-filter: blur(8px);
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.15);
   border-radius: var(--card-border-radius);
-  min-width: 180px;
-  max-width: 300px; /* Ensure bubbles don't get too wide */
-  word-wrap: break-word; /* Ensure text wraps */
-  overflow-wrap: break-word; /* Modern browsers */
-  /* Remove transition from here to avoid conflicting animations */
+  transition: background-color 0.3s ease;
+  overflow: hidden;
 }
 
 .keyword-bubble-collapsed {
   background-color: rgba(255, 255, 255, 0.15);
-  transition: background-color 0.3s ease-out;
+  cursor: pointer;
 }
 
 .keyword-bubble-collapsed:hover {
@@ -179,9 +210,6 @@ body {
 .keyword-bubble-expanded {
   background-color: rgba(255, 255, 255, 0.35);
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
-  max-width: min(400px, 85vw);
-  width: 100%;
-  /* Content expansion is handled separately */
 }
 
 /* Tag styles */

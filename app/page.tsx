@@ -14,6 +14,21 @@ import { useMeetingContext } from "@/context/meeting-context"
 import { ArrowUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+// Update the PositionedKeyword interface to include secondaryTag
+interface PositionedKeyword {
+  id: string
+  text: string
+  position: { x: number; y: number }
+  tag: string
+  secondaryTag?: string
+  absoluteX?: number
+  absoluteY?: number
+  width?: number
+  height?: number
+  isBelowFold?: boolean
+  gridPosition?: { row: number; col: number }
+}
+
 interface ChatMessage {
   sender: "You" | "AI"
   text: string
@@ -24,18 +39,6 @@ interface ChatMessage {
 interface HistoricInsight {
   id: string
   timestamp: Date
-}
-
-interface PositionedKeyword {
-  id: string
-  text: string
-  position: { x: number; y: number }
-  tag: string
-  absoluteX?: number
-  absoluteY?: number
-  width?: number
-  height?: number
-  isBelowFold?: boolean
 }
 
 export default function Page() {
@@ -81,7 +84,12 @@ export default function Page() {
   }, [])
 
   // Get all unique tags from keywords
-  const allTags = Array.from(new Set(mockKeywords.map((keyword) => keyword.tag)))
+  const allTags = Array.from(
+    new Set([
+      ...mockKeywords.map((keyword) => keyword.tag),
+      ...mockKeywords.filter((keyword) => keyword.secondaryTag).map((keyword) => keyword.secondaryTag as string),
+    ]),
+  )
   const [selectedTags, setSelectedTags] = useState<string[]>([...allTags]) // All selected by default
   const [adjustedKeywords, setAdjustedKeywords] = useState<PositionedKeyword[]>(mockKeywords)
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -116,166 +124,108 @@ export default function Page() {
     }
   }
 
-  // Dynamic positioning to prevent overlaps and keep bubbles in view
+  // Replace the useEffect for positioning with this column-based layout approach
   useEffect(() => {
     // Only run this when the canvas is visible
     if (activeTab !== "canvas" || !canvasRef.current) return
 
-    const canvasWidth = canvasRef.current.clientWidth
-    const viewportHeight = window.innerHeight - 150 // Account for header and some padding
-
-    // We'll use a virtual canvas height that's at least the viewport height
-    // but can expand to accommodate all cards
-    const initialCanvasHeight = Math.max(viewportHeight, canvasRef.current.clientHeight)
-
-    // Filter keywords based on selected tags
-    const visibleKeywords = mockKeywords.filter((keyword) => selectedTags.includes(keyword.tag))
-
     // Determine if we're on a mobile device
     const isMobileView = window.innerWidth < 640
 
-    // Clone the keywords for manipulation
-    const newPositions = [...visibleKeywords].map((keyword) => {
-      // Adjust horizontal distribution to be more centered for all devices
-      let adjustedX = keyword.position.x
-      if (isMobileView) {
-        // On mobile, constrain horizontal positions to be more centered
-        // Map the original 0-1 range to a narrower 0.2-0.8 range for better centering
-        adjustedX = 0.2 + keyword.position.x * 0.6
-      } else {
-        // For desktop, shift all cards to the left by 25%
-        adjustedX = Math.max(0.1, keyword.position.x - 0.25)
+    // Calculate how many columns we can fit
+    const canvasWidth = canvasRef.current.clientWidth
+    const cardWidth = isMobileView ? 280 : 320 // Card width in pixels
+    const gap = isMobileView ? 16 : 24 // Gap between cards in pixels
+    const padding = isMobileView ? 16 : 24 // Padding around the grid
+    const columnPadding = isMobileView ? 8 : 12 // Padding between columns
+
+    // Calculate available width for cards
+    const availableWidth = canvasWidth - padding * 2
+
+    // Calculate number of columns (minimum 1)
+    const numColumns = Math.max(1, Math.floor(availableWidth / (cardWidth + columnPadding * 2)))
+
+    // Calculate actual column width including padding
+    const columnWidth = availableWidth / numColumns
+
+    // Filter keywords based on selected tags
+    const visibleKeywords = mockKeywords.filter((keyword) => {
+      const primaryTagSelected = selectedTags.includes(keyword.tag)
+
+      // If this keyword has a Question secondary tag
+      if (keyword.secondaryTag === "Question") {
+        // It should only show if BOTH the primary tag AND Question tag are selected
+        return primaryTagSelected && selectedTags.includes("Question")
       }
 
-      return {
-        ...keyword,
-        // Convert percentage to absolute positions with adjusted distribution
-        absoluteX: adjustedX * canvasWidth,
-        absoluteY: keyword.position.y * initialCanvasHeight * 0.7 + 150, // Distribute in top 70% of canvas with padding
-        // Adjust card size for mobile
-        width: isMobileView ? 300 : 350, // Slightly smaller cards on mobile
-        height: 80,
-        isBelowFold: false, // Initialize as not below fold
-      }
+      // For keywords without a secondary tag, just check the primary tag
+      return primaryTagSelected
     })
 
-    // Function to check if two bubbles overlap
-    const checkOverlap = (a: any, b: any) => {
-      // Reduce padding on mobile for tighter packing
-      const padding = isMobileView ? 30 : 50 // Less minimum space between bubbles on mobile
-      return (
-        Math.abs(a.absoluteX - b.absoluteX) < (a.width + b.width) / 2 + padding &&
-        Math.abs(a.absoluteY - b.absoluteY) < (a.height + b.height) / 2 + padding
-      )
-    }
+    // Distribute keywords into columns (column-first distribution)
+    const columns: PositionedKeyword[][] = Array.from({ length: numColumns }, () => [])
 
-    // Simple force-directed algorithm to adjust positions
-    const iterations = 20 // More iterations for better positioning
-    for (let iter = 0; iter < iterations; iter++) {
-      for (let i = 0; i < newPositions.length; i++) {
-        const bubble = newPositions[i]
+    // Distribute keywords evenly across columns
+    visibleKeywords.forEach((keyword, index) => {
+      const columnIndex = index % numColumns
+      columns[columnIndex].push({
+        ...keyword,
+        gridPosition: {
+          row: columns[columnIndex].length + 1,
+          col: columnIndex + 1,
+        },
+      })
+    })
 
-        // Keep bubbles within horizontal bounds
-        // Use smaller padding from edges on mobile
-        const padding = isMobileView ? 20 : 50 // Less padding from edges on mobile
-        const topPadding = 120 // Top padding to avoid tab bar
-        bubble.absoluteX = Math.max(
-          bubble.width / 2 + padding,
-          Math.min(canvasWidth - bubble.width / 2 - padding, bubble.absoluteX),
-        )
+    // Flatten the columns back into a single array
+    const keywordsWithGridPositions = columns.flat()
 
-        // Only enforce minimum Y position, allow cards to go below viewport
-        bubble.absoluteY = Math.max(bubble.height / 2 + topPadding, bubble.absoluteY)
+    // Check which cards are below the fold
+    const viewportHeight = window.innerHeight - 150 // Account for header and padding
 
-        // Adjust positions to avoid overlaps
-        for (let j = 0; j < newPositions.length; j++) {
-          if (i !== j) {
-            const otherBubble = newPositions[j]
-
-            // Check for very similar vertical positions (potential for horizontal overlap)
-            const verticallyAligned = Math.abs(bubble.absoluteY - otherBubble.absoluteY) < bubble.height * 0.7
-
-            if (checkOverlap(bubble, otherBubble)) {
-              // Calculate direction to push
-              const dx = bubble.absoluteX - otherBubble.absoluteX
-              let dy = bubble.absoluteY - otherBubble.absoluteY
-
-              // If vertically aligned, ensure we add a vertical component to the movement
-              if (verticallyAligned) {
-                // If dy is very small, give it a direction based on the bubble's ID
-                if (Math.abs(dy) < 5) {
-                  dy = i < j ? -30 : 30 // Increased vertical separation
-                } else {
-                  // Amplify the existing vertical difference
-                  dy = dy * 1.8
-                }
-              }
-
-              const distance = Math.sqrt(dx * dx + dy * dy) || 1
-
-              // Normalize and apply force - increased force for more spacing
-              // Use smaller force on mobile for tighter packing
-              const forceMultiplier = isMobileView ? 15 : 25
-              const moveX = (dx / distance) * forceMultiplier
-              const moveY = (dy / distance) * forceMultiplier
-
-              bubble.absoluteX += moveX
-              bubble.absoluteY += moveY
-              otherBubble.absoluteX -= moveX
-              otherBubble.absoluteY -= moveY
-
-              // Keep bubbles within horizontal bounds after adjustment
-              otherBubble.absoluteX = Math.max(
-                otherBubble.width / 2 + padding,
-                Math.min(canvasWidth - otherBubble.width / 2 - padding, otherBubble.absoluteX),
-              )
-
-              // Only enforce minimum Y position for other bubbles
-              otherBubble.absoluteY = Math.max(otherBubble.height / 2 + topPadding, otherBubble.absoluteY)
-            }
-          }
-        }
-      }
-    }
-
-    // Find the lowest card to determine canvas height
-    const lowestCard = newPositions.reduce(
-      (lowest, current) => (current.absoluteY > lowest.absoluteY ? current : lowest),
-      newPositions[0],
-    )
-
-    // Set canvas height to accommodate all cards plus padding
-    const requiredHeight = Math.max(viewportHeight, lowestCard.absoluteY + lowestCard.height + 100)
-
-    // Mark cards that are below the fold
-    const belowFoldCards = newPositions.filter((bubble) => {
-      // Check if the card's top edge is below the viewport
-      const isBelowFold = bubble.absoluteY - bubble.height / 2 > viewportHeight
-      bubble.isBelowFold = isBelowFold
+    // We'll need to estimate the height of each row
+    const estimatedRowHeight = 100 // Base height of a card
+    const belowFoldCards = keywordsWithGridPositions.filter((keyword) => {
+      // Estimate the Y position based on grid row
+      const estimatedY = (keyword.gridPosition?.row || 1) * estimatedRowHeight
+      const isBelowFold = estimatedY > viewportHeight
+      keyword.isBelowFold = isBelowFold
       return isBelowFold
     })
 
     // Update if there's content below the fold
     setHasContentBelow(belowFoldCards.length > 0)
 
+    // Calculate required height for the canvas
+    // Find the column with the most cards
+    const maxCardsInColumn = Math.max(...columns.map((col) => col.length))
+    const requiredHeight = Math.max(viewportHeight, maxCardsInColumn * estimatedRowHeight + padding * 2 + 120) // Add extra for top padding
+
     // Update canvas height if needed
     if (canvasRef.current && requiredHeight > viewportHeight) {
       canvasRef.current.style.minHeight = `${requiredHeight}px`
     }
 
-    // Convert back to percentage positions for rendering
-    // But use the required height for Y position calculation to ensure proper positioning
-    const adjustedKeywords = newPositions.map((bubble) => ({
-      ...bubble,
-      position: {
-        x: bubble.absoluteX / canvasWidth,
-        y: bubble.absoluteY / requiredHeight,
-      },
-      isBelowFold: bubble.isBelowFold,
-    }))
+    setAdjustedKeywords(keywordsWithGridPositions)
 
-    setAdjustedKeywords(adjustedKeywords)
+    // Store the column structure for rendering
+    setColumnStructure({
+      columns,
+      columnWidth,
+      numColumns,
+    })
   }, [activeTab, selectedTags, canvasRef.current?.clientWidth])
+
+  // Add this state to store the column structure
+  const [columnStructure, setColumnStructure] = useState<{
+    columns: PositionedKeyword[][]
+    columnWidth: number
+    numColumns: number
+  }>({
+    columns: [],
+    columnWidth: 0,
+    numColumns: 0,
+  })
 
   // Add a resize listener to update positions when window size changes
   useEffect(() => {
@@ -559,24 +509,54 @@ export default function Page() {
         <div className="absolute inset-0" ref={canvasContainerRef}>
           <Canvas sentiment={sentiment}>
             <div className="pt-16 min-h-screen relative" ref={canvasRef}>
-              {adjustedKeywords
-                .filter((keyword) => selectedTags.includes(keyword.tag))
-                .map((keyword) => (
-                  <KeywordBubble
-                    key={keyword.id}
-                    id={keyword.id}
-                    text={keyword.text}
-                    position={keyword.position}
-                    tag={keyword.tag}
-                    onClick={() => handleKeywordClick(keyword.id)}
-                    isActive={expandedInsight === keyword.id}
-                    insight={expandedInsight === keyword.id ? mockInsights.find((i) => i.id === keyword.id) : undefined}
-                    onClose={expandedInsight === keyword.id ? () => setExpandedInsight(null) : undefined}
-                    onVoiceInteraction={expandedInsight === keyword.id ? handleVoiceInteraction : undefined}
-                    onChatClick={expandedInsight === keyword.id ? (message) => handleChatSubmit(message) : undefined}
-                    isHighlighted={hoveredInsight === keyword.id}
-                  />
+              <div className="keyword-grid">
+                {columnStructure.columns.map((column, columnIndex) => (
+                  <div
+                    key={`column-${columnIndex}`}
+                    className="keyword-column"
+                    style={{
+                      width: `${100 / columnStructure.numColumns}%`,
+                    }}
+                  >
+                    {column
+                      .filter((keyword) => {
+                        // First check if the primary tag is selected
+                        const primaryTagSelected = selectedTags.includes(keyword.tag)
+
+                        // If this keyword has a Question secondary tag
+                        if (keyword.secondaryTag === "Question") {
+                          // It should only show if BOTH the primary tag AND Question tag are selected
+                          return primaryTagSelected && selectedTags.includes("Question")
+                        }
+
+                        // For keywords without a secondary tag, just check the primary tag
+                        return primaryTagSelected
+                      })
+                      .map((keyword) => (
+                        <KeywordBubble
+                          key={keyword.id}
+                          id={keyword.id}
+                          text={keyword.text}
+                          position={keyword.position}
+                          tag={keyword.tag}
+                          secondaryTag={keyword.secondaryTag}
+                          onClick={() => handleKeywordClick(keyword.id)}
+                          isActive={expandedInsight === keyword.id}
+                          insight={
+                            expandedInsight === keyword.id ? mockInsights.find((i) => i.id === keyword.id) : undefined
+                          }
+                          onClose={expandedInsight === keyword.id ? () => setExpandedInsight(null) : undefined}
+                          onVoiceInteraction={expandedInsight === keyword.id ? handleVoiceInteraction : undefined}
+                          onChatClick={
+                            expandedInsight === keyword.id ? (message) => handleChatSubmit(message) : undefined
+                          }
+                          isHighlighted={hoveredInsight === keyword.id}
+                          gridPosition={keyword.gridPosition}
+                        />
+                      ))}
+                  </div>
                 ))}
+              </div>
             </div>
           </Canvas>
         </div>

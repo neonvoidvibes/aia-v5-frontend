@@ -50,6 +50,30 @@ export default function TagFilter({ tags, selectedTags, onTagsChange }: TagFilte
     setIsCollapsed(!isCollapsed)
   }
 
+  // Function to sort tags in the desired order
+  const sortTags = (tagsToSort: string[]) => {
+    // Define the order we want - ensure Question is after Portal
+    const order = ["Mirror", "Lens", "Portal", "Question"]
+
+    // Sort based on the order array
+    return [...tagsToSort].sort((a, b) => {
+      const indexA = order.indexOf(a)
+      const indexB = order.indexOf(b)
+
+      // If both tags are in our order array, sort by their position
+      if (indexA !== -1 && indexB !== -1) {
+        return indexA - indexB
+      }
+
+      // If only one tag is in our order array, prioritize it
+      if (indexA !== -1) return -1
+      if (indexB !== -1) return 1
+
+      // For tags not in our order array, sort alphabetically
+      return a.localeCompare(b)
+    })
+  }
+
   return (
     <div className="w-full max-w-lg mx-auto px-2 sm:px-4 mt-2 mb-4" style={{ marginTop: isMobile ? "-4px" : "" }}>
       {isCollapsed ? (
@@ -85,7 +109,7 @@ export default function TagFilter({ tags, selectedTags, onTagsChange }: TagFilte
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-2">
-            {tags.map((tag) => (
+            {sortTags(tags).map((tag) => (
               <button
                 key={tag}
                 className={`px-2 py-0.5 border text-xs font-medium uppercase tracking-wider transition-colors ${

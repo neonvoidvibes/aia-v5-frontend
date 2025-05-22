@@ -5,6 +5,7 @@ export const mockKeywords = [
     text: "What's our vision for this project?",
     position: { x: 0.55, y: 0.25 },
     tag: "Mirror",
+    secondaryTag: "Question",
   },
   {
     id: "keyword2",
@@ -35,6 +36,7 @@ export const mockKeywords = [
     text: "How can we improve user experience?",
     position: { x: 0.8, y: 0.25 },
     tag: "Portal",
+    secondaryTag: "Question",
   },
   {
     id: "keyword7",
