@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Play, Pause, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +20,8 @@ export default function RecordingControls({
   const [waveformValues, setWaveformValues] = useState<number[]>(Array(20).fill(0))
   const [localIsMinimized, setLocalIsMinimized] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+
+  const controlsRef = useRef<HTMLDivElement>(null)
 
   // Check if mobile
   useEffect(() => {
@@ -55,6 +57,21 @@ export default function RecordingControls({
     return () => clearInterval(interval)
   }, [isRecording])
 
+  useEffect(() => {
+    if (isMinimized) return // Don't add listener when already minimized
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (controlsRef.current && !controlsRef.current.contains(event.target as Node)) {
+        setIsMinimized(true)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [isMinimized, setIsMinimized])
+
   const toggleRecording = () => {
     setIsRecording(!isRecording)
     setHasStarted(true)
@@ -83,7 +100,7 @@ export default function RecordingControls({
   if (isMinimized) {
     return (
       <div
-        className="px-1 sm:px-2 py-1 text-white cursor-pointer flex items-center justify-center"
+        className="px-1 sm:px-4 py-1 text-white cursor-pointer flex flex-col items-center justify-center"
         onClick={toggleMinimized}
         style={{
           width: "auto",
@@ -139,12 +156,16 @@ export default function RecordingControls({
         >
           <path d="m18 15-6-6-6 6" />
         </svg>
+
+        {/* Add "Start Recording" text below the chevron */}
+        <span className="text-white/70 text-xs mt-1">{hasStarted ? "Resume Recording" : "Start Recording"}</span>
       </div>
     )
   }
 
   return (
     <div
+      ref={controlsRef}
       className={cn(
         "recording-controls-container rounded-full px-2 sm:px-4 py-2 flex items-center recording-controls",
         isMobile ? "mobile-recording-controls" : "h-[44px]", // Add fixed height for desktop

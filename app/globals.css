@@ -6,6 +6,7 @@
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 0, 0, 0;
   --background-end-rgb: 0, 0, 0;
+  --card-border-radius: 20px; /* Standardized border radius */
 }
 
 body {
@@ -147,14 +148,14 @@ body {
   background-color: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(8px);
   box-shadow: 0 0 30px rgba(255, 255, 255, 0.15);
-  border-radius: 1.5rem;
+  border-radius: var(--card-border-radius);
 }
 
 /* Keyword bubble styles */
 .keyword-bubble {
   backdrop-filter: blur(8px);
   box-shadow: 0 0 10px rgba(255, 255, 255, 0.15);
-  border-radius: 28px;
+  border-radius: var(--card-border-radius);
   min-width: 180px;
   max-width: 300px; /* Ensure bubbles don't get too wide */
   word-wrap: break-word; /* Ensure text wraps */
@@ -209,6 +210,7 @@ body {
 .notification-modal {
   background-color: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
+  border-radius: var(--card-border-radius);
 }
 
 /* Recording controls styles */
@@ -330,7 +332,7 @@ body {
 
 /* Tab bar styles */
 .tab-bar {
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.25); /* Reduced opacity from 0.4 to 0.25 */
   backdrop-filter: blur(8px);
 }
 
@@ -346,12 +348,12 @@ body {
 .chat-bubble-user {
   background-color: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(8px);
-  border-radius: 1.5rem;
+  border-radius: var(--card-border-radius);
 }
 
 /* Change the .chat-bubble-ai style to have a transparent background */
 .chat-bubble-ai {
   background-color: transparent;
   backdrop-filter: blur(8px);
-  border-radius: 1.5rem;
+  border-radius: var(--card-border-radius);
 }

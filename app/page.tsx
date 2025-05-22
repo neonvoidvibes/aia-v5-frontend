@@ -136,12 +136,15 @@ export default function Page() {
 
     // Clone the keywords for manipulation
     const newPositions = [...visibleKeywords].map((keyword) => {
-      // For mobile, adjust the horizontal distribution to be more centered
+      // Adjust horizontal distribution to be more centered for all devices
       let adjustedX = keyword.position.x
       if (isMobileView) {
         // On mobile, constrain horizontal positions to be more centered
         // Map the original 0-1 range to a narrower 0.2-0.8 range for better centering
         adjustedX = 0.2 + keyword.position.x * 0.6
+      } else {
+        // For desktop, shift all cards to the left by 25%
+        adjustedX = Math.max(0.1, keyword.position.x - 0.25)
       }
 
       return {
@@ -448,7 +451,7 @@ export default function Page() {
 
   return (
     <main className="relative w-full h-screen overflow-hidden">
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-[70%] sm:w-full sm:max-w-lg px-1 sm:px-4">
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50 w-[60%] sm:w-full sm:max-w-md px-1 sm:px-4">
         <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
 
@@ -477,7 +480,7 @@ export default function Page() {
       {notificationModal && (
         <div
           ref={notificationRef}
-          className="notification-modal absolute top-24 right-2 sm:right-6 rounded-3xl p-4 sm:p-6 z-40 w-72 max-w-[90vw] shadow-lg animate-slideIn"
+          className="notification-modal absolute top-24 right-2 sm:right-6 p-4 sm:p-6 z-40 w-72 max-w-[90vw] shadow-lg animate-slideIn"
         >
           <h3 className="text-white font-medium text-xl mb-2">AI Reflection</h3>
           <div className="h-px bg-white/20 mb-3" />
@@ -599,7 +602,7 @@ export default function Page() {
                   <div key={index} className="relative group">
                     <div
                       className={cn(
-                        "backdrop-blur-md rounded-3xl",
+                        "backdrop-blur-md",
                         msg.sender === "You"
                           ? "chat-bubble-user ml-auto text-white max-w-[85%]"
                           : "chat-bubble-ai mr-auto text-white w-full mb-0" /* AI bubble has transparent bg and no bottom margin for cleaner look */,
