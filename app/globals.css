@@ -7,11 +7,14 @@
   --background-start-rgb: 0, 0, 0;
   --background-end-rgb: 0, 0, 0;
   --card-border-radius: 20px; /* Standardized border radius */
+  --header-height: 60px; /* Reduced from 80px to 60px */
+  --footer-height: 60px; /* Height for bottom section */
 }
 
 body {
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(to bottom, transparent, rgb(var(--background-end-rgb))) rgb(var(--background-start-rgb));
+  overflow: hidden; /* Prevent body scroll */
 }
 
 /* Animation keyframes */
@@ -130,7 +133,7 @@ body {
   animation: statusPulse 2s infinite ease-in-out;
 }
 
-/* Canvas styles */
+/* Canvas styles - full viewport background */
 .canvas-gradient {
   background: linear-gradient(
     135deg,
@@ -141,6 +144,69 @@ body {
   );
   transition: background 4s ease-in-out;
   background-attachment: fixed;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1; /* Behind all content */
+}
+
+/* Fixed header and footer layout */
+.app-layout {
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  pointer-events: none; /* Allow clicks through to content below */
+  background: transparent; /* Remove any background */
+}
+
+.app-header > * {
+  pointer-events: auto; /* Re-enable clicks for header content */
+}
+
+/* Dynamic header height based on filter state */
+.app-header-collapsed {
+  height: var(--header-height);
+}
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  background: transparent; /* Remove background since canvas provides it */
+}
+
+.app-content-collapsed {
+  padding-top: var(--header-height);
+  padding-bottom: var(--footer-height);
+}
+
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--footer-height);
+  z-index: 50;
+  pointer-events: none; /* Allow clicks through to content below */
+  background: transparent; /* Remove any background */
+}
+
+.app-footer > * {
+  pointer-events: auto; /* Re-enable clicks for footer content */
 }
 
 /* Insight bubble styles */
@@ -151,44 +217,46 @@ body {
   border-radius: var(--card-border-radius);
 }
 
+/* Filter section styles */
+.filter-section {
+  padding: 4px 16px 24px 16px; /* Reduced top padding from 8px to 4px for mobile */
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .filter-section {
+    padding: 8px 24px 32px 24px; /* Reduced top padding from 16px to 8px for desktop */
+  }
+}
+
 /* Keyword bubble styles */
-/* Update the keyword grid styles to use a column-based layout */
 .keyword-grid {
   display: flex;
   flex-wrap: wrap;
-  padding: 16px;
+  padding: 0 16px 16px 16px; /* Removed top padding since filter provides it */
   width: 100%;
-  padding-top: 120px; /* Extra top padding to prevent overlay with header and filters */
-}
-
-.keyword-column {
-  display: flex;
-  flex-direction: column;
-  gap: 8px; /* Reduced from 16px to 8px */
-  padding: 0 8px;
+  min-height: calc(100vh - var(--header-height) - var(--footer-height));
 }
 
 @media (min-width: 640px) {
   .keyword-grid {
-    padding: 24px;
-    padding-top: 140px; /* Extra top padding for desktop */
+    padding: 0 24px 24px 24px; /* Removed top padding since filter provides it */
   }
 
   .keyword-column {
-    gap: 12px; /* Reduced from 24px to 12px */
+    gap: 12px;
     padding: 0 12px;
   }
 }
 
-/* Update the keyword bubble container styles */
 .keyword-bubble-container {
   width: 100%;
-  margin-bottom: 8px; /* Reduced from 16px to 8px */
+  margin-bottom: 8px;
 }
 
 @media (min-width: 640px) {
   .keyword-bubble-container {
-    margin-bottom: 12px; /* Reduced from 24px to 12px */
+    margin-bottom: 12px;
   }
 }
 
@@ -198,13 +266,13 @@ body {
   border-radius: var(--card-border-radius);
   transition: background-color 0.3s ease;
   overflow: hidden;
-  min-height: 80px; /* Minimum height for collapsed cards, allows growth */
+  min-height: 80px;
 }
 
 .keyword-bubble-collapsed {
   background-color: rgba(255, 255, 255, 0.15);
   cursor: pointer;
-  min-height: 80px; /* Allow collapsed cards to grow as needed */
+  min-height: 80px;
 }
 
 .keyword-bubble-collapsed:hover {
@@ -218,7 +286,7 @@ body {
 .keyword-bubble-expanded {
   background-color: rgba(255, 255, 255, 0.35);
   box-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
-  height: auto; /* Allow expanded cards to grow */
+  height: auto;
 }
 
 /* Tag styles */
@@ -230,7 +298,7 @@ body {
 /* Notification styles */
 .notification-indicator {
   transition: all 0.5s;
-  display: block; /* Ensure the indicator is visible */
+  display: block;
 }
 
 .notification-indicator-active {
@@ -254,20 +322,19 @@ body {
 .recording-controls {
   transition: all 0.3s ease-in-out;
   position: relative;
-  z-index: 50; /* Ensure controls are above canvas elements */
+  z-index: 50;
 }
 
-/* Recording controls consistent height */
 .recording-controls-container {
   background-color: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(8px);
   position: relative;
-  z-index: 50; /* Ensure container is above canvas elements */
+  z-index: 50;
 }
 
 @media (min-width: 640px) {
   .recording-controls-container {
-    height: 44px; /* Consistent height for desktop */
+    height: 44px;
   }
 }
 
@@ -363,13 +430,25 @@ body {
     width: 20px;
     height: 20px;
   }
-}
 
-/* Add these styles to fix the missing background colors */
+  /* Mobile modal adjustments */
+  .mobile-modal {
+    max-height: 50vh; /* Reduced from 70vh to 50vh */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent body scroll when modal is open */
+  .modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+  }
+}
 
 /* Tab bar styles */
 .tab-bar {
-  background-color: rgba(0, 0, 0, 0.25); /* Reduced opacity from 0.4 to 0.25 */
+  background-color: rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(8px);
 }
 
@@ -379,8 +458,6 @@ body {
   backdrop-filter: blur(8px);
 }
 
-/* Add these styles after the .chat-input-container styles */
-
 /* Chat bubble styles */
 .chat-bubble-user {
   background-color: rgba(255, 255, 255, 0.2);
@@ -388,9 +465,52 @@ body {
   border-radius: var(--card-border-radius);
 }
 
-/* Change the .chat-bubble-ai style to have a transparent background */
 .chat-bubble-ai {
   background-color: transparent;
   backdrop-filter: blur(8px);
   border-radius: var(--card-border-radius);
+}
+
+/* Chat content area */
+.chat-content {
+  padding: 16px;
+  min-height: calc(100vh - var(--header-height) - var(--footer-height) - 80px); /* Account for input area */
+}
+
+@media (min-width: 640px) {
+  .chat-content {
+    padding: 24px;
+  }
+}
+
+/* Smooth scrolling for better UX */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for modal */
+.modal-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modal-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Ensure proper scrolling container */
+.scroll-container {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }

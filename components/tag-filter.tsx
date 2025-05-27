@@ -6,9 +6,10 @@ interface TagFilterProps {
   tags: string[]
   selectedTags: string[]
   onTagsChange: (tags: string[]) => void
+  onExpandedChange?: (expanded: boolean) => void // Add callback for expansion state
 }
 
-export default function TagFilter({ tags, selectedTags, onTagsChange }: TagFilterProps) {
+export default function TagFilter({ tags, selectedTags, onTagsChange, onExpandedChange }: TagFilterProps) {
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [isMobile, setIsMobile] = useState(false)
 
@@ -27,6 +28,13 @@ export default function TagFilter({ tags, selectedTags, onTagsChange }: TagFilte
     // Cleanup
     return () => window.removeEventListener("resize", checkScreenWidth)
   }, [])
+
+  // Notify parent of expansion state changes
+  useEffect(() => {
+    if (onExpandedChange) {
+      onExpandedChange(!isCollapsed)
+    }
+  }, [isCollapsed, onExpandedChange])
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -75,9 +83,9 @@ export default function TagFilter({ tags, selectedTags, onTagsChange }: TagFilte
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto px-2 sm:px-4 mt-2 mb-4" style={{ marginTop: isMobile ? "-4px" : "" }}>
+    <div className="w-full max-w-lg mx-auto px-2 sm:px-4">
       {isCollapsed ? (
-        <div className="flex flex-col items-center justify-center cursor-pointer" onClick={toggleCollapsed}>
+        <div className="flex flex-col items-center justify-center cursor-pointer py-2" onClick={toggleCollapsed}>
           <span className="text-white/70 text-xs mb-1">Open Filter</span>
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -95,7 +103,7 @@ export default function TagFilter({ tags, selectedTags, onTagsChange }: TagFilte
           </svg>
         </div>
       ) : (
-        <>
+        <div className="py-2">
           <div className="flex items-center justify-between mb-2">
             <p className="text-white/70 text-sm">Filter by:</p>
             <div className="flex space-x-2">
@@ -162,7 +170,7 @@ export default function TagFilter({ tags, selectedTags, onTagsChange }: TagFilte
               </svg>
             </button>
           </div>
-        </>
+        </div>
       )}
     </div>
   )

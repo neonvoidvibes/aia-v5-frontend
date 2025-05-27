@@ -3,7 +3,7 @@
 import { type ReactNode, useEffect, useRef, useState, forwardRef } from "react"
 
 interface CanvasProps {
-  children: ReactNode
+  children?: ReactNode
   sentiment: number // 0 to 1, where 0 is cool/analytical and 1 is warm/positive
 }
 
@@ -14,15 +14,24 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(({ children, sentiment },
 
   // Very slow, smooth animation for gradient movement
   useEffect(() => {
-    const animationFrame = requestAnimationFrame(() => {
-      setPhase((prevPhase) => (prevPhase + 0.001) % 360) // Very slow phase change
-    })
+    let animationId: number
 
-    return () => cancelAnimationFrame(animationFrame)
-  }, [phase])
+    const animate = () => {
+      setPhase((prevPhase) => (prevPhase + 0.001) % 1) // Very slow phase change, keep it between 0-1
+      animationId = requestAnimationFrame(animate)
+    }
+
+    animationId = requestAnimationFrame(animate)
+
+    return () => {
+      if (animationId) {
+        cancelAnimationFrame(animationId)
+      }
+    }
+  }, []) // Empty dependency array - only run once
 
   useEffect(() => {
-    if (!canvasRef.current) return
+    if (!canvasRef || typeof canvasRef === "function" || !canvasRef.current) return
 
     // Define base colors for the four corners
     const blueColor = "50, 100, 220" // Blue (analytical)
@@ -88,7 +97,7 @@ const Canvas = forwardRef<HTMLDivElement, CanvasProps>(({ children, sentiment },
   }, [phase, sentiment, canvasRef])
 
   return (
-    <div ref={canvasRef} className="w-full h-full relative overflow-auto canvas-gradient">
+    <div ref={canvasRef} className="canvas-gradient">
       {children}
     </div>
   )

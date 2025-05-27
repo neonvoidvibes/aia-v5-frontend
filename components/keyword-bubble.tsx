@@ -82,6 +82,7 @@ export default function KeywordBubble({
   const inputRef = useRef<HTMLInputElement>(null)
   const [opacity, setOpacity] = useState(0.8)
   const bubbleRef = useRef<HTMLDivElement>(null)
+  const chatInputRef = useRef<HTMLDivElement>(null)
 
   // Fade in and out slightly
   useEffect(() => {
@@ -97,6 +98,72 @@ export default function KeywordBubble({
   useEffect(() => {
     if (showChatInput && inputRef.current) {
       inputRef.current.focus()
+    }
+  }, [showChatInput])
+
+  // Handle scrolling when card is expanded (initial expansion)
+  useEffect(() => {
+    if (isActive && insight && bubbleRef.current) {
+      // Small delay to allow the expansion animation to complete
+      setTimeout(() => {
+        if (bubbleRef.current) {
+          // Find the scrollable container (app-content)
+          const scrollContainer = document.querySelector(".app-content")
+          if (scrollContainer) {
+            const bubbleRect = bubbleRef.current.getBoundingClientRect()
+            const containerRect = scrollContainer.getBoundingClientRect()
+
+            // Calculate the bottom of the expanded card relative to the viewport
+            const cardBottom = bubbleRect.bottom
+            const viewportBottom = containerRect.bottom
+
+            // Check if the bottom of the card is outside the visible area
+            if (cardBottom > viewportBottom) {
+              // Calculate how much we need to scroll to show the full card
+              // Add extra padding to ensure the bottom is clearly visible
+              const scrollAmount = cardBottom - viewportBottom + 40 // Add 40px padding
+
+              scrollContainer.scrollTo({
+                top: scrollContainer.scrollTop + scrollAmount,
+                behavior: "smooth",
+              })
+            }
+          }
+        }
+      }, 350) // Wait for animation to complete (300ms + buffer)
+    }
+  }, [isActive, insight]) // Trigger when card becomes active
+
+  // Handle scrolling when chat input is shown (additional expansion)
+  useEffect(() => {
+    if (showChatInput && bubbleRef.current) {
+      // Small delay to allow the input to render and animations to complete
+      setTimeout(() => {
+        if (bubbleRef.current) {
+          // Find the scrollable container (app-content)
+          const scrollContainer = document.querySelector(".app-content")
+          if (scrollContainer) {
+            const bubbleRect = bubbleRef.current.getBoundingClientRect()
+            const containerRect = scrollContainer.getBoundingClientRect()
+
+            // Calculate the bottom of the expanded card relative to the viewport
+            const cardBottom = bubbleRect.bottom
+            const viewportBottom = containerRect.bottom
+
+            // Check if the bottom of the card is outside the visible area
+            if (cardBottom > viewportBottom) {
+              // Calculate how much we need to scroll to show the full card
+              // Add extra padding to ensure the bottom is clearly visible
+              const scrollAmount = cardBottom - viewportBottom + 40 // Add 40px padding
+
+              scrollContainer.scrollTo({
+                top: scrollContainer.scrollTop + scrollAmount,
+                behavior: "smooth",
+              })
+            }
+          }
+        }
+      }, 350) // Wait for animation to complete (300ms + buffer)
     }
   }, [showChatInput])
 
@@ -229,6 +296,7 @@ export default function KeywordBubble({
               <AnimatePresence>
                 {showChatInput && (
                   <motion.div
+                    ref={chatInputRef}
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
