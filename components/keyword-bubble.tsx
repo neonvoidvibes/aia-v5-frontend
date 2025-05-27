@@ -43,6 +43,7 @@ interface KeywordBubbleProps {
   onChatClick?: (message: string) => void
   isHighlighted?: boolean
   gridPosition?: { row: number; col: number }
+  isDimmed?: boolean
 }
 
 // Helper function to get tag border color classes
@@ -75,6 +76,7 @@ export default function KeywordBubble({
   onChatClick,
   isHighlighted,
   gridPosition,
+  isDimmed,
 }: KeywordBubbleProps) {
   const [isReading, setIsReading] = useState(false)
   const [showChatInput, setShowChatInput] = useState(false)
@@ -196,25 +198,19 @@ export default function KeywordBubble({
 
   return (
     <div className="keyword-bubble-container">
-      <motion.div
-        layout="position"
+      {/* REMOVED: motion.div with layout="position" - replaced with regular div */}
+      <div
         className={cn(
           "keyword-bubble w-full",
           isActive ? "keyword-bubble-expanded" : "keyword-bubble-collapsed",
           isHighlighted && !isActive ? "keyword-bubble-highlighted" : "",
+          isDimmed ? "keyword-bubble-dimmed" : "",
         )}
         onClick={!isActive ? onClick : undefined}
         ref={bubbleRef}
-        initial={false}
-        animate={{
-          opacity: isHighlighted ? 1 : opacity,
-        }}
-        transition={{
-          layout: { duration: 0.3, ease: "easeInOut" },
-          opacity: { duration: 0.2 },
-        }}
         style={{
           zIndex: isActive ? 10 : 1,
+          opacity: isHighlighted ? 1 : isDimmed ? 0.3 : opacity,
         }}
       >
         {/* Header - Always visible */}
@@ -346,7 +342,7 @@ export default function KeywordBubble({
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
     </div>
   )
 }

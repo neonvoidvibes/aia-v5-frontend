@@ -4,7 +4,11 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { MeetingProvider } from "@/context/meeting-context"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap", // This prevents layout shift by swapping fonts smoothly
+  preload: true, // Ensures font is preloaded
+})
 
 export const metadata: Metadata = {
   title: "Living Canvas - AI-Enhanced Meeting Interface",

@@ -27,6 +27,7 @@ interface PositionedKeyword {
   height?: number
   isBelowFold?: boolean
   gridPosition?: { row: number; col: number }
+  isDimmed?: boolean
 }
 
 interface ChatMessage {
@@ -67,6 +68,50 @@ const getModalTagBorderClasses = (tag: string) => {
     default:
       return "border-white/70 text-white bg-transparent"
   }
+}
+
+// Debugging function to log element positions
+const logElementPositions = (label: string) => {
+  console.log(`=== ${label} ===`)
+
+  const scrollContainer = document.querySelector(".app-content")
+  const filterSection = document.querySelector(".filter-section")
+  const keywordGrid = document.querySelector(".keyword-grid")
+  const firstBubble = document.querySelector(".keyword-bubble")
+
+  if (scrollContainer) {
+    console.log("Scroll container scrollTop:", scrollContainer.scrollTop)
+  }
+
+  if (filterSection) {
+    const rect = filterSection.getBoundingClientRect()
+    console.log("Filter section:", {
+      height: rect.height,
+      top: rect.top,
+      offsetTop: (filterSection as HTMLElement).offsetTop,
+    })
+  }
+
+  if (keywordGrid) {
+    const rect = keywordGrid.getBoundingClientRect()
+    console.log("Keyword grid:", {
+      top: rect.top,
+      offsetTop: (keywordGrid as HTMLElement).offsetTop,
+    })
+  }
+
+  if (firstBubble) {
+    const rect = firstBubble.getBoundingClientRect()
+    console.log("First bubble:", {
+      top: rect.top,
+      offsetTop: (firstBubble as HTMLElement).offsetTop,
+    })
+  }
+
+  console.log("Window dimensions:", {
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+  })
 }
 
 export default function Page() {
@@ -139,6 +184,9 @@ export default function Page() {
     numColumns: 0,
   })
 
+  // Add a new state for dimming other cards when opening from AI reflection:
+  const [isDimmingOthers, setIsDimmingOthers] = useState(false)
+
   // Helper function to check if a card should be visible - memoize this
   const isCardVisible = useCallback(
     (keyword: PositionedKeyword) => {
@@ -165,17 +213,59 @@ export default function Page() {
   // Memoize the canvas width to prevent unnecessary recalculations
   const [canvasWidth, setCanvasWidth] = useState(0)
 
-  // Update canvas width when canvas ref changes
+  // Replace the existing canvas width useEffects with this ResizeObserver approach
   useEffect(() => {
-    if (canvasRef.current) {
-      setCanvasWidth(canvasRef.current.clientWidth)
-    }
-  }, [activeTab])
+    const canvasElement = canvasRef.current
+    if (!canvasElement) return
 
-  // Replace the useEffect for positioning with this column-based layout approach
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        // Use entry.contentRect.width for more precise width
+        const newWidth = entry.contentRect.width
+        console.log("ResizeObserver: Canvas width changed to", newWidth)
+        setCanvasWidth(newWidth)
+      }
+    })
+
+    observer.observe(canvasElement)
+
+    // Set initial width
+    const initialWidth = canvasElement.clientWidth
+    console.log("Initial canvas width:", initialWidth)
+    setCanvasWidth(initialWidth)
+
+    return () => {
+      if (canvasElement) {
+        observer.unobserve(canvasElement)
+      }
+    }
+  }, []) // Runs once on mount to set up observer
+
+  // Remove the old resize listener useEffect - replace it with this enhanced version
   useEffect(() => {
+    const handleResize = () => {
+      console.log("Window resize event fired")
+      // ResizeObserver will handle canvas width changes, but we might need this for other responsive behavior
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
+  // In the column structure useEffect, add logging at the beginning:
+  useEffect(() => {
+    console.log("Column structure calculation triggered:", {
+      activeTab,
+      canvasWidth,
+      notificationModal,
+      filterExpanded,
+    })
+
     // Only run this when the canvas is visible and we have a width
-    if (activeTab !== "canvas" || canvasWidth === 0) return
+    if (activeTab !== "canvas" || canvasWidth === 0) {
+      console.log("Skipping column calculation - canvas not visible or width is 0")
+      return
+    }
 
     // Determine if we're on a mobile device
     const isMobileView = window.innerWidth < 640
@@ -219,19 +309,7 @@ export default function Page() {
       columnWidth,
       numColumns,
     })
-  }, [activeTab, canvasWidth, isCardVisible])
-
-  // Add a resize listener to update canvas width
-  useEffect(() => {
-    const handleResize = () => {
-      if (canvasRef.current) {
-        setCanvasWidth(canvasRef.current.clientWidth)
-      }
-    }
-
-    window.addEventListener("resize", handleResize)
-    return () => window.removeEventListener("resize", handleResize)
-  }, [])
+  }, [activeTab, canvasWidth, isCardVisible, notificationModal, filterExpanded])
 
   // Save complete UI state when opening modals/filters
   const saveUIState = useCallback(() => {
@@ -319,7 +397,23 @@ export default function Page() {
 
       // Continue generating insights even if current one wasn't clicked
       if (Math.random() > 0.95) {
-        const randomInsight = mockInsights[Math.floor(Math.random() * mockInsights.length)].id
+        // Get all existing insight IDs to avoid duplicates
+        const existingIds = new Set(
+          [
+            currentInsight,
+            ...recentInsights.map((r) => r.id),
+            ...checkedInsights.map((c) => c.id),
+            ...archivedInsights.map((a) => a.id),
+          ].filter(Boolean),
+        )
+
+        // Find available insights that haven't been shown yet
+        const availableInsights = mockInsights.filter((insight) => !existingIds.has(insight.id))
+
+        // If no available insights, skip this cycle
+        if (availableInsights.length === 0) return
+
+        const randomInsight = availableInsights[Math.floor(Math.random() * availableInsights.length)].id
 
         // Move current insight to recent if there is one
         if (currentInsight) {
@@ -344,16 +438,42 @@ export default function Page() {
     }, 3000)
 
     return () => clearInterval(interval)
-  }, [sentiment, setSentiment, currentInsight])
+  }, [sentiment, setSentiment, currentInsight, recentInsights, checkedInsights, archivedInsights])
 
   const handleNotificationClick = useCallback(() => {
-    saveUIState()
+    // Log positions BEFORE modal state change
+    logElementPositions("BEFORE modal open")
+
+    // Use requestAnimationFrame to log positions at different stages
+    requestAnimationFrame(() => {
+      logElementPositions("AFTER requestAnimationFrame 1")
+
+      requestAnimationFrame(() => {
+        logElementPositions("AFTER requestAnimationFrame 2")
+
+        setTimeout(() => {
+          logElementPositions("AFTER setTimeout 0")
+        }, 0)
+
+        setTimeout(() => {
+          logElementPositions("AFTER setTimeout 100")
+        }, 100)
+      })
+    })
+
     setNotificationModal(true)
     setModalOpen(true)
     if (window.innerWidth < 640) {
       document.body.classList.add("modal-open")
     }
-  }, [saveUIState])
+  }, [])
+
+  // Add useEffect to monitor notificationModal state changes
+  useEffect(() => {
+    if (notificationModal) {
+      logElementPositions("INSIDE useEffect - modal opened")
+    }
+  }, [notificationModal])
 
   useEffect(() => {
     if (!notificationModal) return
@@ -385,6 +505,7 @@ export default function Page() {
       if (!target.closest(".keyword-bubble")) {
         setExpandedInsight(null)
         setTemporarilyVisibleCards(new Set())
+        setIsDimmingOthers(false) // Add this line
       }
     }
 
@@ -397,6 +518,7 @@ export default function Page() {
   const handleKeywordClick = useCallback(
     (id: string) => {
       setExpandedInsight(expandedInsight === id ? null : id)
+      setIsDimmingOthers(false) // Add this line
     },
     [expandedInsight],
   )
@@ -443,6 +565,7 @@ export default function Page() {
       setExpandedInsight(id)
       setNotificationModal(false)
       setModalOpen(false)
+      setIsDimmingOthers(true) // Add this line
 
       const keyword = mockKeywords.find((k) => k.id === id)
       if (keyword && !isCardVisible(keyword)) {
@@ -578,7 +701,7 @@ export default function Page() {
           </div>
 
           {activeTab === "canvas" && (
-            <div className="absolute right-3 sm:right-6 flex items-center" style={{ top: "26px" }}>
+            <div className="absolute right-4 sm:right-8 flex items-center" style={{ top: isMobile ? "28px" : "26px" }}>
               {/* Only show text if not mobile AND notification is active */}
               {!isMobile && (
                 <span
@@ -800,6 +923,7 @@ export default function Page() {
                               ? () => {
                                   setExpandedInsight(null)
                                   setTemporarilyVisibleCards(new Set())
+                                  setIsDimmingOthers(false) // Add this line
                                 }
                               : undefined
                           }
@@ -809,6 +933,7 @@ export default function Page() {
                           }
                           isHighlighted={hoveredInsight === keyword.id}
                           gridPosition={keyword.gridPosition}
+                          isDimmed={isDimmingOthers && expandedInsight !== keyword.id} // Add this line
                         />
                       </div>
                     ))}
@@ -969,11 +1094,11 @@ export default function Page() {
           {activeTab === "chat" && (
             <div className="absolute bottom-16 left-0 right-0 px-2 sm:px-4">
               <div className="max-w-2xl mx-auto">
-                <div className="chat-input-container rounded-full flex items-center p-1 shadow-lg animate-slideUp">
+                <div className="chat-input-container-white rounded-full flex items-center p-1 shadow-lg animate-slideUp">
                   <input
                     ref={inputRef}
                     type="text"
-                    className="flex-1 bg-transparent border-none outline-none text-white pl-6 pr-4 py-2 text-lg"
+                    className="flex-1 bg-transparent border-none outline-none text-white pl-4 pr-4 py-2 text-lg placeholder-white/70"
                     placeholder="Type your message..."
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
@@ -981,17 +1106,17 @@ export default function Page() {
                   />
                   <div className="ml-2">
                     <button
-                      className={`p-2 rounded-full ${
-                        inputValue.trim() ? "bg-white/20 text-white hover:bg-white/30" : "bg-white/20 text-white/40"
+                      className={`p-1.5 mr-1 rounded-full ${
+                        inputValue.trim() ? "bg-white/70 text-black/90 hover:bg-white/90" : "bg-white/45 text-black/90"
                       }`}
                       onClick={() => inputValue.trim() && handleChatSubmit(inputValue)}
                       disabled={!inputValue.trim()}
                       aria-label={inputValue.trim() ? "Send message" : "Voice chat (coming soon)"}
                     >
                       {inputValue.trim() ? (
-                        <ArrowUp className="h-6 w-6 text-white" strokeWidth={3} />
+                        <ArrowUp className="h-6 w-6" strokeWidth={3} />
                       ) : (
-                        <ClassicWaveform className="h-6 w-6 text-white" />
+                        <ClassicWaveform className="h-6 w-6" />
                       )}
                     </button>
                   </div>
