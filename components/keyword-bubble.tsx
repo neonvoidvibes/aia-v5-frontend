@@ -2,9 +2,21 @@
 import { useState, useRef, useEffect } from "react"
 import type React from "react"
 
-import { MicIcon, XIcon, MessageSquare } from "lucide-react"
+import { XIcon, MessageSquare } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
+
+// Classic Waveform Icon Component
+const ClassicWaveform = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <rect x="2" y="8" width="2" height="8" rx="0" />
+    <rect x="6" y="4" width="2" height="16" rx="0" />
+    <rect x="10" y="10" width="2" height="4" rx="0" />
+    <rect x="14" y="6" width="2" height="12" rx="0" />
+    <rect x="18" y="2" width="2" height="20" rx="0" />
+    <rect x="22" y="9" width="2" height="6" rx="0" />
+  </svg>
+)
 
 interface KeywordBubbleProps {
   id: string
@@ -95,7 +107,7 @@ export default function KeywordBubble({
   return (
     <div className="keyword-bubble-container">
       <motion.div
-        layout
+        layout="position"
         className={cn(
           "keyword-bubble w-full",
           isActive ? "keyword-bubble-expanded" : "keyword-bubble-collapsed",
@@ -107,20 +119,24 @@ export default function KeywordBubble({
         animate={{
           opacity: isHighlighted ? 1 : opacity,
         }}
+        transition={{
+          layout: { duration: 0.3, ease: "easeInOut" },
+          opacity: { duration: 0.2 },
+        }}
         style={{
           zIndex: isActive ? 10 : 1,
         }}
       >
         {/* Header - Always visible */}
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center flex-1 mr-2">
-            <span className="font-medium text-lg sm:text-xl text-white mr-2 sm:mr-3 break-words">{text}</span>
-            <div className="flex flex-col items-end">
-              <div className="tag px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-xs font-medium text-white uppercase tracking-wider whitespace-nowrap flex-shrink-0">
+        <div className="flex items-center justify-between p-4 min-h-[80px]">
+          <div className="flex items-center flex-1 min-w-0">
+            <span className="font-medium text-lg sm:text-xl text-white break-words flex-1 mr-2 sm:mr-3">{text}</span>
+            <div className="flex flex-col items-end flex-shrink-0">
+              <div className="tag px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-xs font-medium text-white uppercase tracking-wider whitespace-nowrap">
                 {tag}
               </div>
               {secondaryTag && (
-                <div className="tag px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-xs font-medium text-white uppercase tracking-wider whitespace-nowrap flex-shrink-0 mt-1 self-end">
+                <div className="tag px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-xs font-medium text-white uppercase tracking-wider whitespace-nowrap mt-1">
                   Q
                 </div>
               )}
@@ -128,7 +144,7 @@ export default function KeywordBubble({
           </div>
           {isActive && onClose && (
             <button
-              className="text-white/70 hover:text-white hover:bg-white/10 p-1 rounded-full flex-shrink-0"
+              className="text-white/70 hover:text-white hover:bg-white/10 p-1 rounded-full flex-shrink-0 ml-2"
               onClick={(e) => {
                 e.stopPropagation()
                 onClose()
@@ -151,7 +167,7 @@ export default function KeywordBubble({
             >
               <div className="px-4 pb-4">
                 <div className="h-px bg-white/20 mb-4" />
-                <p className="text-white/90 mb-4 text-lg">{insight.content}</p>
+                <p className="text-white mb-4 text-lg">{insight.content}</p>
                 {insight.source && <p className="text-sm text-white/60 mb-4 text-base">Source: {insight.source}</p>}
 
                 <div className="flex space-x-2">
@@ -160,7 +176,7 @@ export default function KeywordBubble({
                     onClick={handleVoiceClick}
                     disabled={isReading}
                   >
-                    <MicIcon className="h-4 w-4 mr-2" />
+                    <ClassicWaveform className="h-4 w-4 mr-2" />
                     {isReading ? "Reading..." : "Read Aloud"}
                   </button>
 

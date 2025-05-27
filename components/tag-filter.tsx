@@ -109,7 +109,8 @@ export default function TagFilter({ tags, selectedTags, onTagsChange }: TagFilte
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mb-2">
-            {sortTags(tags).map((tag) => (
+            {/* Primary tags (excluding Question) */}
+            {sortTags(tags.filter((tag) => tag !== "Question")).map((tag) => (
               <button
                 key={tag}
                 className={`px-2 py-0.5 border text-xs font-medium uppercase tracking-wider transition-colors ${
@@ -123,6 +124,25 @@ export default function TagFilter({ tags, selectedTags, onTagsChange }: TagFilte
                 {tag}
               </button>
             ))}
+
+            {/* Separator and Question tag */}
+            {tags.includes("Question") && (
+              <>
+                <span className="text-white/50 self-center">|</span>
+                <button
+                  key="Question"
+                  className={`px-2 py-0.5 border text-xs font-medium uppercase tracking-wider transition-colors ${
+                    selectedTags.includes("Question")
+                      ? "border-white text-white"
+                      : "border-white/40 text-white/40 hover:border-white/60 hover:text-white/60"
+                  }`}
+                  style={{ borderRadius: "4px" }}
+                  onClick={() => toggleTag("Question")}
+                >
+                  Question
+                </button>
+              </>
+            )}
           </div>
           <div className="flex justify-center mt-2">
             <button className="text-white/70 hover:text-white flex items-center" onClick={toggleCollapsed}>

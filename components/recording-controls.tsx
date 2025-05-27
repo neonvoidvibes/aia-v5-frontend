@@ -107,58 +107,61 @@ export default function RecordingControls({
           opacity: 1,
         }}
       >
-        {hasStarted && (
-          <div
-            className={cn(
-              "rounded-full mr-2",
-              isRecording ? "recording-status-active recording-status-indicator" : "recording-status-paused",
-              isMobile ? "mobile-recording-status" : "desktop-recording-status",
-            )}
-          />
-        )}
+        {/* Horizontal row for status indicators and chevron */}
+        <div className="flex items-center">
+          {hasStarted && (
+            <div
+              className={cn(
+                "rounded-full mr-2",
+                isRecording ? "recording-status-active recording-status-indicator" : "recording-status-paused",
+                isMobile ? "mobile-recording-status" : "desktop-recording-status",
+              )}
+            />
+          )}
 
-        {/* Show mini waveform when recording */}
-        {hasStarted && isRecording && (
-          <div className="flex items-center h-5 space-x-0.5 mx-2" style={{ width: isMobile ? "30px" : "40px" }}>
-            {[1, 2, 3, 4, 5].map((_, index) => (
-              <div
-                key={index}
-                className="waveform-bar recording-status-indicator"
-                style={{
-                  width: isMobile ? "1px" : "2px",
-                  height: `${Math.random() * (isMobile ? 6 : 10) + 3}px`,
-                  opacity: 0.7 + Math.random() * 0.3,
-                  animationDelay: `${index * 0.1}s`,
-                }}
-              />
-            ))}
-          </div>
-        )}
+          {/* Show mini waveform when recording */}
+          {hasStarted && isRecording && (
+            <div className="flex items-center h-5 space-x-0.5 mr-2" style={{ width: isMobile ? "30px" : "40px" }}>
+              {[1, 2, 3, 4, 5].map((_, index) => (
+                <div
+                  key={index}
+                  className="waveform-bar recording-status-indicator"
+                  style={{
+                    width: isMobile ? "1px" : "2px",
+                    height: `${Math.random() * (isMobile ? 6 : 10) + 3}px`,
+                    opacity: 0.7 + Math.random() * 0.3,
+                    animationDelay: `${index * 0.1}s`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
 
-        {/* Show "Paused" text when paused */}
-        {hasStarted && !isRecording && (
-          <span className={`text-white/80 ${isMobile ? "text-[10px]" : "text-xs"} mr-2`}>Paused</span>
-        )}
+          {/* Show "Paused" text when paused */}
+          {hasStarted && !isRecording && (
+            <span className={`text-white/80 ${isMobile ? "text-[10px]" : "text-xs"} mr-2`}>Paused</span>
+          )}
 
-        {/* Slightly smaller but still visible chevron */}
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width={iconSize}
-          height={iconSize}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="lucide lucide-chevron-up"
-          style={{ minWidth: `${iconSize}px`, minHeight: `${iconSize}px` }}
-        >
-          <path d="m18 15-6-6-6 6" />
-        </svg>
+          {/* Chevron */}
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width={iconSize}
+            height={iconSize}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="lucide lucide-chevron-up"
+            style={{ minWidth: `${iconSize}px`, minHeight: `${iconSize}px` }}
+          >
+            <path d="m18 15-6-6-6 6" />
+          </svg>
+        </div>
 
-        {/* Add "Start Recording" text below the chevron */}
-        <span className="text-white/70 text-xs mt-1">{hasStarted ? "Resume Recording" : "Start Recording"}</span>
+        {/* Text below the horizontal row - only show when not started */}
+        {!hasStarted && <span className="text-white/70 text-xs mt-1">Start Recording</span>}
       </div>
     )
   }

@@ -41,6 +41,18 @@ interface HistoricInsight {
   timestamp: Date
 }
 
+// Classic Waveform Icon Component
+const ClassicWaveform = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <rect x="2" y="8" width="2" height="8" rx="0" />
+    <rect x="6" y="4" width="2" height="16" rx="0" />
+    <rect x="10" y="10" width="2" height="4" rx="0" />
+    <rect x="14" y="6" width="2" height="12" rx="0" />
+    <rect x="18" y="2" width="2" height="20" rx="0" />
+    <rect x="22" y="9" width="2" height="6" rx="0" />
+  </svg>
+)
+
 export default function Page() {
   const { sentiment, setSentiment } = useMeetingContext()
   const [expandedInsight, setExpandedInsight] = useState<string | null>(null)
@@ -90,7 +102,7 @@ export default function Page() {
       ...mockKeywords.filter((keyword) => keyword.secondaryTag).map((keyword) => keyword.secondaryTag as string),
     ]),
   )
-  const [selectedTags, setSelectedTags] = useState<string[]>([...allTags]) // All selected by default
+  const [selectedTags, setSelectedTags] = useState<string[]>([...allTags.filter((tag) => tag !== "Question")]) // All selected by default except Question
   const [adjustedKeywords, setAdjustedKeywords] = useState<PositionedKeyword[]>(mockKeywords)
   const canvasRef = useRef<HTMLDivElement>(null)
 
@@ -151,15 +163,15 @@ export default function Page() {
     // Filter keywords based on selected tags
     const visibleKeywords = mockKeywords.filter((keyword) => {
       const primaryTagSelected = selectedTags.includes(keyword.tag)
+      const questionTagSelected = selectedTags.includes("Question")
 
-      // If this keyword has a Question secondary tag
-      if (keyword.secondaryTag === "Question") {
-        // It should only show if BOTH the primary tag AND Question tag are selected
-        return primaryTagSelected && selectedTags.includes("Question")
+      // If Question is selected, only show Question cards whose primary tag is also selected
+      if (questionTagSelected) {
+        return keyword.secondaryTag === "Question" && primaryTagSelected
       }
 
-      // For keywords without a secondary tag, just check the primary tag
-      return primaryTagSelected
+      // If Question is not selected, show non-Question cards based on primary tag
+      return primaryTagSelected && keyword.secondaryTag !== "Question"
     })
 
     // Distribute keywords into columns (column-first distribution)
@@ -294,6 +306,25 @@ export default function Page() {
     }
   }, [notificationModal])
 
+  // Handle click outside expanded cards to close them
+  useEffect(() => {
+    if (!expandedInsight) return
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+
+      // Check if the click is outside any keyword bubble
+      if (!target.closest(".keyword-bubble")) {
+        setExpandedInsight(null)
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [expandedInsight])
+
   const handleKeywordClick = (id: string) => {
     setExpandedInsight(expandedInsight === id ? null : id)
   }
@@ -332,8 +363,9 @@ export default function Page() {
   const handleChatSubmit = (message: string) => {
     if (!message.trim()) return
 
-    // Get the current insight if one is expanded
-    const currentInsight = expandedInsight ? mockInsights.find((i) => i.id === expandedInsight) : undefined
+    // Get the current insight if one is expanded AND we're on the canvas tab
+    const currentInsight =
+      expandedInsight && activeTab === "canvas" ? mockInsights.find((i) => i.id === expandedInsight) : undefined
 
     // Add user message to chat with insight if available
     setChatMessages((prev) => [
@@ -351,14 +383,14 @@ export default function Page() {
 
     // Add AI response
     setTimeout(() => {
-      let aiResponse = "I've noted your message. How can I help further?"
+      let aiResponse = "I'm here to help surface collective insights. What would you like to explore together?"
 
       if (currentInsight) {
-        // Generate a more contextual response based on the insight
+        // Generate responses that focus on collective intelligence themes
         const responses = [
-          `That's an interesting point about ${currentInsight.title.toLowerCase()}. Have you considered how this might impact the team's workflow?`,
-          `I see you're focusing on ${currentInsight.title.toLowerCase()}. This aligns with our quarterly objectives.`,
-          `Your thoughts on ${currentInsight.title.toLowerCase()} are valuable. I've added this to our action items for follow-up.`,
+          `Your reflection on ${currentInsight.title.toLowerCase()} highlights an important aspect of our collective understanding. How might we build on this insight as a group?`,
+          `This connects to patterns I'm seeing in our dialogue around ${currentInsight.title.toLowerCase()}. What other perspectives might enrich this shared understanding?`,
+          `Your input on ${currentInsight.title.toLowerCase()} adds valuable context to our collective sense-making. I've noted this for our group's knowledge base.`,
         ]
         aiResponse = responses[Math.floor(Math.random() * responses.length)]
       }
@@ -484,7 +516,7 @@ export default function Page() {
                         className="text-white/80 hover:bg-white/10 p-2 rounded-xl w-full text-left transition-colors text-sm"
                         onClick={() => handleShowInsight(historic.id)}
                         onMouseEnter={() => setHoveredInsight(historic.id)}
-                        onMouseLeave={() => setHoveredInsight(null)}
+                        onMouseLeave={() => setHoveredInsight(historic.id)}
                       >
                         <div className="flex items-center justify-between">
                           <span>{insight?.title}</span>
@@ -520,19 +552,18 @@ export default function Page() {
                   >
                     {column
                       .filter((keyword) => {
-                        // First check if the primary tag is selected
                         const primaryTagSelected = selectedTags.includes(keyword.tag)
+                        const questionTagSelected = selectedTags.includes("Question")
 
-                        // If this keyword has a Question secondary tag
-                        if (keyword.secondaryTag === "Question") {
-                          // It should only show if BOTH the primary tag AND Question tag are selected
-                          return primaryTagSelected && selectedTags.includes("Question")
+                        // If Question is selected, only show Question cards whose primary tag is also selected
+                        if (questionTagSelected) {
+                          return keyword.secondaryTag === "Question" && primaryTagSelected
                         }
 
-                        // For keywords without a secondary tag, just check the primary tag
-                        return primaryTagSelected
+                        // If Question is not selected, show non-Question cards based on primary tag
+                        return primaryTagSelected && keyword.secondaryTag !== "Question"
                       })
-                      .map((keyword) => (
+                      .map((keyword, idx) => (
                         <KeywordBubble
                           key={keyword.id}
                           id={keyword.id}
@@ -746,22 +777,28 @@ export default function Page() {
                 <input
                   ref={inputRef}
                   type="text"
-                  className="flex-1 bg-transparent border-none outline-none text-white px-4 py-3 text-lg"
+                  className="flex-1 bg-transparent border-none outline-none text-white pl-6 pr-4 py-2 text-lg"
                   placeholder="Type your message..."
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyPress={handleKeyPress}
                 />
-                <button
-                  className={`p-3 rounded-full ${
-                    inputValue.trim() ? "bg-white/20 text-white hover:bg-white/30" : "text-white/40"
-                  }`}
-                  onClick={() => handleChatSubmit(inputValue)}
-                  disabled={!inputValue.trim()}
-                  aria-label="Send message"
-                >
-                  <ArrowUp className="h-5 w-5" />
-                </button>
+                <div className="ml-2">
+                  <button
+                    className={`p-2 rounded-full ${
+                      inputValue.trim() ? "bg-white/20 text-white hover:bg-white/30" : "bg-white/20 text-white/40"
+                    }`}
+                    onClick={() => inputValue.trim() && handleChatSubmit(inputValue)}
+                    disabled={!inputValue.trim()}
+                    aria-label={inputValue.trim() ? "Send message" : "Voice chat (coming soon)"}
+                  >
+                    {inputValue.trim() ? (
+                      <ArrowUp className="h-6 w-6 text-white" strokeWidth={3} />
+                    ) : (
+                      <ClassicWaveform className="h-6 w-6 text-white" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
