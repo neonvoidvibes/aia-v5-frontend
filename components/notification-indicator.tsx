@@ -34,8 +34,8 @@ export default function NotificationIndicator({ active, onClick }: NotificationI
         active ? "cursor-pointer notification-indicator-active" : "notification-indicator-inactive",
         isMobile ? "mobile-notification-indicator" : "desktop-notification-indicator",
       )}
-      onClick={active ? onClick : undefined}
-      aria-hidden={!active}
+      onClick={onClick}
+      aria-hidden={false}
     />
   )
 }

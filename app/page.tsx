@@ -53,12 +53,33 @@ const ClassicWaveform = ({ className }: { className?: string }) => (
   </svg>
 )
 
+// Helper function to get tag border color classes for modal
+const getModalTagBorderClasses = (tag: string) => {
+  switch (tag.toLowerCase()) {
+    case "mirror":
+      return "border-orange-400 text-white bg-transparent"
+    case "lens":
+      return "border-green-400 text-white bg-transparent"
+    case "portal":
+      return "border-blue-600 text-white bg-transparent"
+    case "question":
+      return "border-white/70 text-white bg-transparent"
+    default:
+      return "border-white/70 text-white bg-transparent"
+  }
+}
+
 export default function Page() {
   const { sentiment, setSentiment } = useMeetingContext()
   const [expandedInsight, setExpandedInsight] = useState<string | null>(null)
   const [hasNotification, setHasNotification] = useState(false)
-  const [importantInsights, setImportantInsights] = useState<string[]>([])
-  const [historicInsights, setHistoricInsights] = useState<HistoricInsight[]>([])
+
+  // Updated reflection state management
+  const [currentInsight, setCurrentInsight] = useState<string | null>(null) // Only one at a time
+  const [recentInsights, setRecentInsights] = useState<HistoricInsight[]>([]) // Max 3
+  const [checkedInsights, setCheckedInsights] = useState<HistoricInsight[]>([]) // Previously "historic"
+  const [archivedInsights, setArchivedInsights] = useState<HistoricInsight[]>([]) // Overflow from recent
+
   const [activeTab, setActiveTab] = useState("canvas")
   const [notificationModal, setNotificationModal] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
@@ -78,6 +99,9 @@ export default function Page() {
     chat: true, // Collapsed by default for chat
     canvas: false, // Opened by default for insights
   })
+
+  // New state for temporarily showing hidden cards
+  const [temporarilyVisibleCards, setTemporarilyVisibleCards] = useState<Set<string>>(new Set())
 
   // Check if mobile
   useEffect(() => {
@@ -106,12 +130,32 @@ export default function Page() {
   const [adjustedKeywords, setAdjustedKeywords] = useState<PositionedKeyword[]>(mockKeywords)
   const canvasRef = useRef<HTMLDivElement>(null)
 
+  // Helper function to check if a card should be visible
+  const isCardVisible = (keyword: PositionedKeyword) => {
+    // If card is temporarily visible due to AI reflection, show it
+    if (temporarilyVisibleCards.has(keyword.id)) {
+      return true
+    }
+
+    // Normal filtering logic
+    const primaryTagSelected = selectedTags.includes(keyword.tag)
+    const questionTagSelected = selectedTags.includes("Question")
+
+    // If Question is selected, only show Question cards whose primary tag is also selected
+    if (questionTagSelected) {
+      return keyword.secondaryTag === "Question" && primaryTagSelected
+    }
+
+    // If Question is not selected, show non-Question cards based on primary tag
+    return primaryTagSelected && keyword.secondaryTag !== "Question"
+  }
+
   // Scroll to cards below the fold
   const scrollToCardsBelowFold = () => {
     if (canvasContainerRef.current) {
       // Find the first card below the fold
       const belowFoldCards = adjustedKeywords
-        .filter((keyword) => keyword.isBelowFold && selectedTags.includes(keyword.tag))
+        .filter((keyword) => keyword.isBelowFold && isCardVisible(keyword))
         .sort((a, b) => {
           // Sort by Y position to find the topmost card below the fold
           const aY = a.absoluteY || 0
@@ -160,19 +204,8 @@ export default function Page() {
     // Calculate actual column width including padding
     const columnWidth = availableWidth / numColumns
 
-    // Filter keywords based on selected tags
-    const visibleKeywords = mockKeywords.filter((keyword) => {
-      const primaryTagSelected = selectedTags.includes(keyword.tag)
-      const questionTagSelected = selectedTags.includes("Question")
-
-      // If Question is selected, only show Question cards whose primary tag is also selected
-      if (questionTagSelected) {
-        return keyword.secondaryTag === "Question" && primaryTagSelected
-      }
-
-      // If Question is not selected, show non-Question cards based on primary tag
-      return primaryTagSelected && keyword.secondaryTag !== "Question"
-    })
+    // Filter keywords based on visibility (including temporarily visible cards)
+    const visibleKeywords = mockKeywords.filter(isCardVisible)
 
     // Distribute keywords into columns (column-first distribution)
     const columns: PositionedKeyword[][] = Array.from({ length: numColumns }, () => [])
@@ -226,7 +259,7 @@ export default function Page() {
       columnWidth,
       numColumns,
     })
-  }, [activeTab, selectedTags, canvasRef.current?.clientWidth])
+  }, [activeTab, selectedTags, canvasRef.current?.clientWidth, temporarilyVisibleCards])
 
   // Add this state to store the column structure
   const [columnStructure, setColumnStructure] = useState<{
@@ -271,23 +304,41 @@ export default function Page() {
     setRecordingMinimized(activeTab === "chat" ? userRecordingPreference.chat : userRecordingPreference.canvas)
   }, [activeTab, userRecordingPreference])
 
-  // Update the useEffect to change sentiment more frequently
+  // Updated useEffect to handle new reflection system - keep generating insights
   useEffect(() => {
     const interval = setInterval(() => {
       // More dynamic sentiment changes
       const newSentiment = Math.min(Math.max(sentiment + (Math.random() - 0.5) * 0.15, 0), 1)
       setSentiment(newSentiment)
 
-      // Randomly trigger notifications
-      if (Math.random() > 0.95 && !hasNotification) {
-        setHasNotification(true)
+      // Continue generating insights even if current one wasn't clicked
+      if (Math.random() > 0.95) {
         const randomInsight = mockInsights[Math.floor(Math.random() * mockInsights.length)].id
-        setImportantInsights((prev) => [...prev, randomInsight])
+
+        // Move current insight to recent if there is one
+        if (currentInsight) {
+          setRecentInsights((prev) => {
+            const newRecent = [{ id: currentInsight, timestamp: new Date() }, ...prev]
+
+            // If more than 3 in recent, move oldest to archived
+            if (newRecent.length > 3) {
+              const toArchive = newRecent.pop()!
+              setArchivedInsights((prevArchived) => [toArchive, ...prevArchived])
+              return newRecent.slice(0, 3)
+            }
+
+            return newRecent
+          })
+        }
+
+        // Set new current insight and activate notification
+        setCurrentInsight(randomInsight)
+        setHasNotification(true)
       }
     }, 3000) // Faster updates for more dynamic changes
 
     return () => clearInterval(interval)
-  }, [sentiment, setSentiment, hasNotification])
+  }, [sentiment, setSentiment, currentInsight])
 
   // Handle click outside notification modal
   useEffect(() => {
@@ -316,6 +367,8 @@ export default function Page() {
       // Check if the click is outside any keyword bubble
       if (!target.closest(".keyword-bubble")) {
         setExpandedInsight(null)
+        // Remove temporarily visible cards when closing
+        setTemporarilyVisibleCards(new Set())
       }
     }
 
@@ -342,20 +395,60 @@ export default function Page() {
     setNotificationModal(true)
   }
 
-  const handleShowInsight = (id: string) => {
-    setExpandedInsight(id)
-    setNotificationModal(false)
-    setHasNotification(false)
+  // Updated function to handle insight interactions
+  const handleInsightHover = (id: string) => {
+    setHoveredInsight(id)
 
-    // Move current insights to historic when they're viewed
-    if (importantInsights.includes(id)) {
-      setImportantInsights((prev) => prev.filter((insightId) => insightId !== id))
+    // Check if the card would be hidden by current filters
+    const keyword = mockKeywords.find((k) => k.id === id)
+    if (keyword && !isCardVisible(keyword)) {
+      // Temporarily show the card
+      setTemporarilyVisibleCards((prev) => new Set([...prev, id]))
+    }
+  }
 
-      // Add to historic insights if not already there
-      if (!historicInsights.some((insight) => insight.id === id)) {
-        setHistoricInsights((prev) => [...prev, { id, timestamp: new Date() }])
+  const handleInsightHoverLeave = (id: string) => {
+    setHoveredInsight(null)
+
+    // Remove from temporarily visible if it was added during hover
+    const keyword = mockKeywords.find((k) => k.id === id)
+    if (keyword && temporarilyVisibleCards.has(id)) {
+      // Only remove if the card is not expanded
+      if (expandedInsight !== id) {
+        setTemporarilyVisibleCards((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(id)
+          return newSet
+        })
       }
     }
+  }
+
+  const handleShowInsight = (id: string, section: "current" | "recent" | "checked" | "archived") => {
+    setExpandedInsight(id)
+    setNotificationModal(false)
+
+    // Check if the card would be hidden by current filters and show it temporarily
+    const keyword = mockKeywords.find((k) => k.id === id)
+    if (keyword && !isCardVisible(keyword)) {
+      setTemporarilyVisibleCards((prev) => new Set([...prev, id]))
+    }
+
+    // Only deactivate notification if clicking the current/top item
+    if (section === "current") {
+      setHasNotification(false)
+      setCurrentInsight(null)
+      setCheckedInsights((prev) => [{ id, timestamp: new Date() }, ...prev])
+    } else if (section === "recent") {
+      // Keep notification active, just move from recent to checked
+      setRecentInsights((prev) => prev.filter((insight) => insight.id !== id))
+      setCheckedInsights((prev) => [{ id, timestamp: new Date() }, ...prev])
+    } else if (section === "archived") {
+      // Keep notification active, just move from archived to checked
+      setArchivedInsights((prev) => prev.filter((insight) => insight.id !== id))
+      setCheckedInsights((prev) => [{ id, timestamp: new Date() }, ...prev])
+    }
+    // If already in checked, don't move it and keep notification active
 
     setHoveredInsight(null) // Reset hovered insight when an insight is selected
   }
@@ -364,7 +457,7 @@ export default function Page() {
     if (!message.trim()) return
 
     // Get the current insight if one is expanded AND we're on the canvas tab
-    const currentInsight =
+    const currentInsightData =
       expandedInsight && activeTab === "canvas" ? mockInsights.find((i) => i.id === expandedInsight) : undefined
 
     // Add user message to chat with insight if available
@@ -373,8 +466,8 @@ export default function Page() {
       {
         sender: "You",
         text: message,
-        insightTitle: currentInsight?.title,
-        insightContent: currentInsight?.content,
+        insightTitle: currentInsightData?.title,
+        insightContent: currentInsightData?.content,
       },
     ])
 
@@ -385,12 +478,12 @@ export default function Page() {
     setTimeout(() => {
       let aiResponse = "I'm here to help surface collective insights. What would you like to explore together?"
 
-      if (currentInsight) {
+      if (currentInsightData) {
         // Generate responses that focus on collective intelligence themes
         const responses = [
-          `Your reflection on ${currentInsight.title.toLowerCase()} highlights an important aspect of our collective understanding. How might we build on this insight as a group?`,
-          `This connects to patterns I'm seeing in our dialogue around ${currentInsight.title.toLowerCase()}. What other perspectives might enrich this shared understanding?`,
-          `Your input on ${currentInsight.title.toLowerCase()} adds valuable context to our collective sense-making. I've noted this for our group's knowledge base.`,
+          `Your reflection on ${currentInsightData.title.toLowerCase()} highlights an important aspect of our collective understanding. How might we build on this insight as a group?`,
+          `This connects to patterns I'm seeing in our dialogue around ${currentInsightData.title.toLowerCase()}. What other perspectives might enrich this shared understanding?`,
+          `Your input on ${currentInsightData.title.toLowerCase()} adds valuable context to our collective sense-making. I've noted this for our group's knowledge base.`,
         ]
         aiResponse = responses[Math.floor(Math.random() * responses.length)]
       }
@@ -443,10 +536,8 @@ export default function Page() {
             {/* Only show text if not mobile AND notification is active */}
             {!isMobile && (
               <span
-                className={`text-white/70 text-[10px] sm:text-xs mr-1 sm:mr-2 cursor-pointer ${
-                  hasNotification ? "hover:text-white/90" : ""
-                }`}
-                onClick={hasNotification ? handleNotificationClick : undefined}
+                className="text-white/70 text-[10px] sm:text-xs mr-1 sm:mr-2 cursor-pointer hover:text-white/90"
+                onClick={handleNotificationClick}
               >
                 AI Reflection
               </span>
@@ -462,66 +553,152 @@ export default function Page() {
       {notificationModal && (
         <div
           ref={notificationRef}
-          className="notification-modal absolute top-24 right-2 sm:right-6 p-4 sm:p-6 z-40 w-72 max-w-[90vw] shadow-lg animate-slideIn"
+          className="notification-modal absolute top-24 right-2 sm:right-6 p-4 sm:p-6 z-40 w-80 max-w-[90vw] shadow-lg animate-slideIn"
         >
           <h3 className="text-white font-medium text-xl mb-2">AI Reflection</h3>
           <div className="h-px bg-white/20 mb-3" />
 
-          {/* Current insights */}
-          {importantInsights.length > 0 && (
-            <ul className="space-y-2">
-              {importantInsights.map((id) => {
-                const insight = mockInsights.find((i) => i.id === id)
-                const keyword = mockKeywords.find((k) => k.id === id)
-                return (
-                  <li key={id}>
-                    <button
-                      className="text-white hover:bg-white/10 p-2 rounded-xl w-full text-left transition-colors text-base"
-                      onClick={() => handleShowInsight(id)}
-                      onMouseEnter={() => setHoveredInsight(id)}
-                      onMouseLeave={() => setHoveredInsight(null)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{insight?.title}</span>
-                        {keyword && (
-                          <div className="tag px-2 py-0.5 text-xs font-medium text-white uppercase tracking-wider">
-                            {keyword.tag}
-                          </div>
-                        )}
-                      </div>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+          {/* Current insight - only one */}
+          {currentInsight && (
+            <>
+              <ul className="space-y-2 mb-4">
+                {(() => {
+                  const insight = mockInsights.find((i) => i.id === currentInsight)
+                  const keyword = mockKeywords.find((k) => k.id === currentInsight)
+                  return (
+                    <li key={currentInsight}>
+                      <button
+                        className="text-white hover:bg-white/10 p-2 rounded-xl w-full text-left transition-colors text-base"
+                        onClick={() => handleShowInsight(currentInsight, "current")}
+                        onMouseEnter={() => handleInsightHover(currentInsight)}
+                        onMouseLeave={() => handleInsightHoverLeave(currentInsight)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="flex-1 break-words">{insight?.title}</span>
+                          {keyword && (
+                            <div
+                              className={cn(
+                                "px-2 py-0.5 text-xs font-medium uppercase tracking-wider flex-shrink-0 border rounded",
+                                getModalTagBorderClasses(keyword.tag),
+                              )}
+                            >
+                              {keyword.tag}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    </li>
+                  )
+                })()}
+              </ul>
+            </>
           )}
 
           {/* No current insights message */}
-          {importantInsights.length === 0 && (
-            <p className="text-white/70 text-sm mb-4">No new reflections at this moment.</p>
-          )}
+          {!currentInsight && <p className="text-white/70 text-sm mb-4">No new reflections at this moment.</p>}
 
-          {/* Historic insights section */}
-          {historicInsights.length > 0 && (
+          {/* Recent Reflections section */}
+          {recentInsights.length > 0 && (
             <>
               <div className="h-px bg-white/20 my-4" />
-              <h4 className="text-white/70 text-sm font-medium mb-2">Previous Reflections</h4>
-              <ul className="space-y-2">
-                {historicInsights.map((historic) => {
-                  const insight = mockInsights.find((i) => i.id === historic.id)
-                  const keyword = mockKeywords.find((k) => k.id === historic.id)
+              <h4 className="text-white/70 text-sm font-medium mb-2">Recent Reflections</h4>
+              <ul className="space-y-2 mb-4">
+                {recentInsights.map((recent) => {
+                  const insight = mockInsights.find((i) => i.id === recent.id)
+                  const keyword = mockKeywords.find((k) => k.id === recent.id)
                   return (
-                    <li key={historic.id}>
+                    <li key={recent.id}>
                       <button
                         className="text-white/80 hover:bg-white/10 p-2 rounded-xl w-full text-left transition-colors text-sm"
-                        onClick={() => handleShowInsight(historic.id)}
-                        onMouseEnter={() => setHoveredInsight(historic.id)}
-                        onMouseLeave={() => setHoveredInsight(historic.id)}
+                        onClick={() => handleShowInsight(recent.id, "recent")}
+                        onMouseEnter={() => handleInsightHover(recent.id)}
+                        onMouseLeave={() => handleInsightHoverLeave(recent.id)}
                       >
-                        <div className="flex items-center justify-between">
-                          <span>{insight?.title}</span>
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="flex-1 break-words">{insight?.title}</span>
                           {keyword && (
-                            <div className="tag px-2 py-0.5 text-xs font-medium text-white uppercase tracking-wider">
+                            <div
+                              className={cn(
+                                "px-2 py-0.5 text-xs font-medium uppercase tracking-wider flex-shrink-0 border rounded",
+                                getModalTagBorderClasses(keyword.tag),
+                              )}
+                            >
+                              {keyword.tag}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+
+          {/* Checked Reflections section */}
+          {checkedInsights.length > 0 && (
+            <>
+              <div className="h-px bg-white/20 my-4" />
+              <h4 className="text-white/70 text-sm font-medium mb-2">Checked Reflections</h4>
+              <ul className="space-y-2 mb-4">
+                {checkedInsights.map((checked) => {
+                  const insight = mockInsights.find((i) => i.id === checked.id)
+                  const keyword = mockKeywords.find((k) => k.id === checked.id)
+                  return (
+                    <li key={checked.id}>
+                      <button
+                        className="text-white/80 hover:bg-white/10 p-2 rounded-xl w-full text-left transition-colors text-sm"
+                        onClick={() => handleShowInsight(checked.id, "checked")}
+                        onMouseEnter={() => handleInsightHover(checked.id)}
+                        onMouseLeave={() => handleInsightHoverLeave(checked.id)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="flex-1 break-words">{insight?.title}</span>
+                          {keyword && (
+                            <div
+                              className={cn(
+                                "px-2 py-0.5 text-xs font-medium uppercase tracking-wider flex-shrink-0 border rounded",
+                                getModalTagBorderClasses(keyword.tag),
+                              )}
+                            >
+                              {keyword.tag}
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+
+          {/* Archived Reflections section */}
+          {archivedInsights.length > 0 && (
+            <>
+              <div className="h-px bg-white/20 my-4" />
+              <h4 className="text-white/70 text-sm font-medium mb-2">Archived Reflections</h4>
+              <ul className="space-y-2">
+                {archivedInsights.map((archived) => {
+                  const insight = mockInsights.find((i) => i.id === archived.id)
+                  const keyword = mockKeywords.find((k) => k.id === archived.id)
+                  return (
+                    <li key={archived.id}>
+                      <button
+                        className="text-white/60 hover:bg-white/10 p-2 rounded-xl w-full text-left transition-colors text-sm"
+                        onClick={() => handleShowInsight(archived.id, "archived")}
+                        onMouseEnter={() => handleInsightHover(archived.id)}
+                        onMouseLeave={() => handleInsightHoverLeave(archived.id)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="flex-1 break-words">{insight?.title}</span>
+                          {keyword && (
+                            <div
+                              className={cn(
+                                "px-2 py-0.5 text-xs font-medium uppercase tracking-wider flex-shrink-0 border rounded",
+                                getModalTagBorderClasses(keyword.tag),
+                              )}
+                            >
                               {keyword.tag}
                             </div>
                           )}
@@ -550,41 +727,36 @@ export default function Page() {
                       width: `${100 / columnStructure.numColumns}%`,
                     }}
                   >
-                    {column
-                      .filter((keyword) => {
-                        const primaryTagSelected = selectedTags.includes(keyword.tag)
-                        const questionTagSelected = selectedTags.includes("Question")
-
-                        // If Question is selected, only show Question cards whose primary tag is also selected
-                        if (questionTagSelected) {
-                          return keyword.secondaryTag === "Question" && primaryTagSelected
+                    {column.filter(isCardVisible).map((keyword, idx) => (
+                      <KeywordBubble
+                        key={keyword.id}
+                        id={keyword.id}
+                        text={keyword.text}
+                        position={keyword.position}
+                        tag={keyword.tag}
+                        secondaryTag={keyword.secondaryTag}
+                        onClick={() => handleKeywordClick(keyword.id)}
+                        isActive={expandedInsight === keyword.id}
+                        insight={
+                          expandedInsight === keyword.id ? mockInsights.find((i) => i.id === keyword.id) : undefined
                         }
-
-                        // If Question is not selected, show non-Question cards based on primary tag
-                        return primaryTagSelected && keyword.secondaryTag !== "Question"
-                      })
-                      .map((keyword, idx) => (
-                        <KeywordBubble
-                          key={keyword.id}
-                          id={keyword.id}
-                          text={keyword.text}
-                          position={keyword.position}
-                          tag={keyword.tag}
-                          secondaryTag={keyword.secondaryTag}
-                          onClick={() => handleKeywordClick(keyword.id)}
-                          isActive={expandedInsight === keyword.id}
-                          insight={
-                            expandedInsight === keyword.id ? mockInsights.find((i) => i.id === keyword.id) : undefined
-                          }
-                          onClose={expandedInsight === keyword.id ? () => setExpandedInsight(null) : undefined}
-                          onVoiceInteraction={expandedInsight === keyword.id ? handleVoiceInteraction : undefined}
-                          onChatClick={
-                            expandedInsight === keyword.id ? (message) => handleChatSubmit(message) : undefined
-                          }
-                          isHighlighted={hoveredInsight === keyword.id}
-                          gridPosition={keyword.gridPosition}
-                        />
-                      ))}
+                        onClose={
+                          expandedInsight === keyword.id
+                            ? () => {
+                                setExpandedInsight(null)
+                                // Remove temporarily visible cards when closing
+                                setTemporarilyVisibleCards(new Set())
+                              }
+                            : undefined
+                        }
+                        onVoiceInteraction={expandedInsight === keyword.id ? handleVoiceInteraction : undefined}
+                        onChatClick={
+                          expandedInsight === keyword.id ? (message) => handleChatSubmit(message) : undefined
+                        }
+                        isHighlighted={hoveredInsight === keyword.id}
+                        gridPosition={keyword.gridPosition}
+                      />
+                    ))}
                   </div>
                 ))}
               </div>

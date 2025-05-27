@@ -18,6 +18,13 @@ const ClassicWaveform = ({ className }: { className?: string }) => (
   </svg>
 )
 
+interface Insight {
+  id: string
+  title: string
+  content: string
+  source?: string
+}
+
 interface KeywordBubbleProps {
   id: string
   text: string
@@ -36,6 +43,22 @@ interface KeywordBubbleProps {
   onChatClick?: (message: string) => void
   isHighlighted?: boolean
   gridPosition?: { row: number; col: number }
+}
+
+// Helper function to get tag border color classes
+const getTagBorderClasses = (tag: string) => {
+  switch (tag.toLowerCase()) {
+    case "mirror":
+      return "border-orange-400 text-white bg-transparent"
+    case "lens":
+      return "border-green-400 text-white bg-transparent"
+    case "portal":
+      return "border-blue-600 text-white bg-transparent"
+    case "question":
+      return "border-white/70 text-white bg-transparent"
+    default:
+      return "border-white/70 text-white bg-transparent"
+  }
 }
 
 export default function KeywordBubble({
@@ -132,11 +155,21 @@ export default function KeywordBubble({
           <div className="flex items-center flex-1 min-w-0">
             <span className="font-medium text-lg sm:text-xl text-white break-words flex-1 mr-2 sm:mr-3">{text}</span>
             <div className="flex flex-col items-end flex-shrink-0">
-              <div className="tag px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-xs font-medium text-white uppercase tracking-wider whitespace-nowrap">
+              <div
+                className={cn(
+                  "px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-xs font-medium uppercase tracking-wider whitespace-nowrap border rounded",
+                  getTagBorderClasses(tag),
+                )}
+              >
                 {tag}
               </div>
               {secondaryTag && (
-                <div className="tag px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-xs font-medium text-white uppercase tracking-wider whitespace-nowrap mt-1">
+                <div
+                  className={cn(
+                    "px-1.5 py-0.5 sm:px-2 sm:py-0.5 text-xs font-medium uppercase tracking-wider whitespace-nowrap mt-1 border rounded",
+                    getTagBorderClasses(secondaryTag),
+                  )}
+                >
                   Q
                 </div>
               )}
